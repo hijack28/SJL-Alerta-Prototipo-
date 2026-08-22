@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SJL Alerta - Sistema de Reporte de Incidencias</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="toast" class="toast hidden">
+    <span class="toast-icon">✓</span>
+    <span id="toast-message">Operación realizada con éxito</span>
+  </div>
+  <div id="app">
+    <section id="screen-login" class="screen">
+      <div class="login-layout">
+        <div class="login-hero">
+          <img src="sjl.jpeg" alt="Pocket Press en uso" class="media__img hero-bg-img" onerror="this.style.display='none'">
+          <div class="hero-overlay"></div>
+          <div class="hero-content">
+            <div class="badge-active">
+              <span class="pulse-dot"></span>
+              Sistema activo &bull; San Juan de Lurigancho, Lima
+            </div>
+            <h1 class="hero-title">San Juan de<br>Lurigancho</h1>
+            <p class="hero-subtitle">
+              Portal oficial de reporte de incidencias urbanas. Juntos construimos un distrito más seguro, limpio y ordenado.
+            </p>
+            <div class="hero-stats">
+              <div class="stat-item">
+                <span class="stat-num">12,400+</span>
+                <span class="stat-desc">Reportes atendidos</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-num">98%</span>
+                <span class="stat-desc">Satisfacción vecinal</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-num">48h</span>
+                <span class="stat-desc">Tiempo de respuesta</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="login-form-wrapper">
+          <div class="login-card-container">
+            <div class="brand-header">
+              <div class="brand-logo">SJ</div>
+              <div>
+                <h2 class="brand-name">SJL Alerta</h2>
+                <p class="brand-sub">Municipalidad de San Juan de Lurigancho</p>
+              </div>
+            </div>
+            
+            <div id="login-box" class="card p-6">
+              <h3 class="card-title">Iniciar sesión</h3>
+              <p class="card-subtitle">Accede con tus credenciales institucionales o vecinales.</p>
+              
+              <form id="form-login" onsubmit="handleLoginSubmit(event)" class="space-y-4">
+                <div class="form-group">
+                  <label for="login-username" class="form-label">Usuario</label>
+                  <input type="text" id="login-username" class="form-input" placeholder="Ingresa tu usuario" required autocomplete="username">
+                </div>
+                <div class="form-group">
+                  <label for="login-password" class="form-label">Contraseña</label>
+                  <input type="password" id="login-password" class="form-input" placeholder="••••••••" required autocomplete="current-password">
+                </div>
+                <div id="login-error" class="alert-error hidden">
+                  <span>⚠️</span>
+                  <span id="login-error-text">Usuario o contraseña incorrectos.</span>
+                </div>
+                <button type="submit" id="btn-login-submit" class="btn btn-primary w-full py-3">
+                  <span>Ingresar</span>
+                  <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="auth-toggle-footer">
+                  <span>¿No tienes una cuenta?</span>
+                  <button type="button" class="btn-link" onclick="toggleAuthMode('register')">Registrarse como vecino</button>
+                </div>
+              </form>
+            </div>
+
+            <div id="register-box" class="card p-6 hidden">
+              <h3 class="card-title">Crear cuenta vecinal</h3>
+              <p class="card-subtitle">Regístrate para reportar incidencias en el distrito.</p>
+
+              <form id="form-register" onsubmit="handleRegisterSubmit(event)" class="space-y-4">
+                <div class="form-group">
+                  <label for="reg-name" class="form-label">Nombre y Apellidos *</label>
+                  <input type="text" id="reg-name" class="form-input" placeholder="Ej: Vecino" required autocomplete="name">
+                </div>
+
+                <div class="form-group">
+                  <label for="reg-username" class="form-label">Usuario *</label>
+                  <input type="text" id="reg-username" class="form-input" placeholder="Crea un nombre de usuario" required autocomplete="username">
+                </div>
+
+                <div class="form-group">
+                  <label for="reg-password" class="form-label">Contraseña *</label>
+                  <input type="password" id="reg-password" class="form-input" placeholder="Mínimo 4 caracteres" required autocomplete="new-password">
+                </div>
+
+                <div class="form-group">
+                  <label for="reg-confirm-password" class="form-label">Confirmar Contraseña *</label>
+                  <input type="password" id="reg-confirm-password" class="form-input" placeholder="Repite tu contraseña" required autocomplete="new-password">
+                </div>
+
+                <div id="register-error" class="alert-error hidden">
+                  <span>⚠️</span>
+                  <span id="register-error-text">Las contraseñas no coinciden.</span>
+                </div>
+
+                <button type="submit" id="btn-register-submit" class="btn btn-primary w-full py-3">
+                  <span>Crear Cuenta</span>
+                  <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+                </button>
+
+                <div class="auth-toggle-footer">
+                  <span>¿Ya tienes cuenta?</span>
+                  <button type="button" class="btn-link" onclick="toggleAuthMode('login')">Iniciar sesión</button>
+                </div>
+              </form>
+            </div>
+
+            <p class="copyright-text">© 2026 Municipalidad Distrital de San Juan de Lurigancho</p>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- encabezado -->
+    <header id="main-header" class="topbar hidden">
+      <div class="topbar-left">
+        <button id="btn-nav-back" class="btn-icon hidden" onclick="handleNavigationBack()" title="Regresar">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path d="M19 12H5M5 12l7-7M5 12l7 7" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <div class="brand-logo-small">SJ</div>
+        <div>
+          <span class="header-brand-title">SJL Alerta</span>
+          <span id="header-role-badge" class="header-role-text">Portal Ciudadano</span>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="user-pill">
+          <div id="user-avatar" class="user-avatar-circle">V</div>
+          <span id="user-name" class="user-display-name">Vecino</span>
+        </div>
+        <button class="btn-logout" onclick="handleLogout()">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span>Salir</span>
+        </button>
+      </div>
+    </header>
+    <!-- portal del ciudadano -->
+    <section id="screen-citizen-dashboard" class="screen main-content-wrapper hidden">
+      <div class="content-container">
+        <div class="section-header-row">
+          <div>
+            <h1 class="page-title">Mis reportes</h1>
+            <p class="page-subtitle">Bienvenido/a, <strong id="citizen-dashboard-user-name" class="text-slate-700">Vecino</strong>. Aquí puedes ver y gestionar tus incidencias registradas.</p>
+          </div>
+          <button class="btn btn-primary" onclick="navigateTo('citizen-new-report')">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+            <span>Nuevo Reporte</span>
+          </button>
+        </div>
+        <div class="stats-grid-3">
+          <div class="stat-card">
+            <div class="stat-icon-wrapper bg-warning-light">💡</div>
+            <div>
+              <div class="stat-card-value text-warning" id="citizen-pending-count">0</div>
+              <div class="stat-card-label">Pendientes</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon-wrapper bg-blue-light">🔄</div>
+            <div>
+              <div class="stat-card-value text-navy" id="citizen-progress-count">0</div>
+              <div class="stat-card-label">En Proceso</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon-wrapper bg-green-light">✅</div>
+            <div>
+              <div class="stat-card-value text-success" id="citizen-resolved-count">0</div>
+              <div class="stat-card-label">Resueltos</div>
+            </div>
+          </div>
+        </div>
+        <div class="report-list-section">
+          <div class="list-heading">
+            <h2 class="section-subheading" id="citizen-list-count">HISTORIAL DE REPORTES</h2>
+          </div>
+          <div id="citizen-reports-container" class="reports-stack"></div>
+        </div>
+      </div>
+    </section>
+    <!-- apartado de reportes -->
+    <section id="screen-citizen-new-report" class="screen main-content-wrapper hidden">
+      <div class="wizard-centered-container">
+        
+        <div class="text-center mb-6">
+          <h1 class="wizard-main-title">Nuevo reporte de incidencia</h1>
+          <p class="wizard-main-subtitle">Completa la información para registrar tu reporte.</p>
+        </div>
+        
+        <div class="stepper-horizontal">
+          <div class="step-item active" id="step-nav-1">
+            <div class="step-badge">1</div>
+            <span class="step-label">Categoría</span>
+          </div>
+          <div class="step-separator" id="step-line-1"></div>
+          <div class="step-item" id="step-nav-2">
+            <div class="step-badge">2</div>
+            <span class="step-label">Detalles</span>
+          </div>
+          <div class="step-separator" id="step-line-2"></div>
+          <div class="step-item" id="step-nav-3">
+            <div class="step-badge">3</div>
+            <span class="step-label">Ubicación</span>
+          </div>
+        </div>
+        <div class="card wizard-card">
+          
+          <!-- pasos de registro, tipo -->
+          <div id="wizard-step-1" class="wizard-view">
+            <h2 class="card-step-header">¿Qué tipo de incidencia quieres reportar?</h2>
+            
+            <div class="categories-grid-2x2">
+              <button type="button" class="category-card-btn" onclick="selectWizardCategory('Luminarias')" data-cat="Luminarias">
+                <span class="cat-icon-container bg-cat-lum">💡</span>
+                <span class="cat-card-name">Luminarias</span>
+              </button>
+              <button type="button" class="category-card-btn" onclick="selectWizardCategory('Basura acumulada')" data-cat="Basura acumulada">
+                <span class="cat-icon-container bg-cat-basura">🗑️</span>
+                <span class="cat-card-name">Basura acumulada</span>
+              </button>
+              <button type="button" class="category-card-btn" onclick="selectWizardCategory('Baches / Pistas rotas')" data-cat="Baches / Pistas rotas">
+                <span class="cat-icon-container bg-cat-baches">🚧</span>
+                <span class="cat-card-name">Baches / Pistas rotas</span>
+              </button>
+              <button type="button" class="category-card-btn" onclick="selectWizardCategory('Fugas de agua')" data-cat="Fugas de agua">
+                <span class="cat-icon-container bg-cat-agua">💧</span>
+                <span class="cat-card-name">Fugas de agua</span>
+              </button>
+              <button type="button" class="category-card-btn col-span-full" onclick="selectWizardCategory('Otro')" data-cat="Otro">
+                <span class="cat-icon-container bg-cat-otro">➕</span>
+                <span class="cat-card-name">Otro (Especificar incidencia)</span>
+              </button>
+            </div>
+            <!-- en caso de escoger otro -->
+            <div id="other-category-field" class="form-group mt-4 hidden">
+              <label for="other-category-input" class="form-label">Especifique el tipo de incidencia *</label>
+              <input type="text" id="other-category-input" class="form-input" placeholder="Ej: Árbol caído, Semáforo averiado, etc." oninput="handleOtherCategoryInput()">
+            </div>
+            <button id="btn-step1-next" type="button" class="btn-step-action btn-full mt-6" disabled onclick="goToWizardStep(2)">
+              Continuar &rarr;
+            </button>
+          </div>
+          <!-- pasos de registro, detalles -->
+          <div id="wizard-step-2" class="wizard-view hidden">
+            <h2 class="card-step-header">Describe la incidencia</h2>
+            
+            <div class="form-group mb-5">
+              <label for="new-report-desc" class="form-label">Descripción *</label>
+              <textarea id="new-report-desc" class="form-textarea desc-box" rows="4" placeholder="Describe brevemente el problema: qué ocurre, desde cuándo y cómo afecta a los vecinos..." oninput="handleDescriptionInput()"></textarea>
+            </div>
+            <div class="form-group mb-6">
+              <label class="form-label">Foto o evidencia (opcional)</label>
+              <div class="upload-dropzone-styled" id="upload-zone" onclick="triggerFileInput()" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleFileDrop(event)">
+                <input type="file" id="new-report-file" accept="image/*" class="hidden" onchange="handleFileSelected(event)">
+                
+                <div id="dropzone-empty">
+                  <div class="dropzone-camera-icon">📷</div>
+                  <p class="dropzone-primary-text">Arrastra una imagen aquí</p>
+                  <p class="dropzone-secondary-text">o haz clic para seleccionar &bull; JPG, PNG, hasta 10MB</p>
+                </div>
+                <div id="dropzone-preview" class="dropzone-preview-styled hidden">
+                  <img src="archivo.jpeg" alt="Pocket Press en uso" class="media__img preview-img-styled" onerror="this.style.display='none'">
+                  <button type="button" class="btn-delete-preview" onclick="removeSelectedPhoto(event)">&times;</button>
+                </div>
+              </div>
+            </div>
+            <div class="dual-actions-row">
+              <button type="button" class="btn-step-back" onclick="goToWizardStep(1)">&larr; Atrás</button>
+              <button id="btn-step2-next" type="button" class="btn-step-action" disabled onclick="goToWizardStep(3)">Continuar &rarr;</button>
+            </div>
+          </div>
+          <!-- pasos de registro, ubicacion -->
+          <div id="wizard-step-3" class="wizard-view hidden">
+            <h2 class="card-step-header">¿Dónde ocurre la incidencia?</h2>
+            <!-- esto solo es el mapa -->
+            <div class="map-interactive-container">
+              <div id="leaflet-map" class="interactive-map-frame"></div>
+              
+              <div class="map-floating-pin-badge">
+                <span class="pin-symbol">📍</span>
+                <span id="map-pin-status-text" class="pin-info-text">Haz clic en el mapa para marcar la ubicación</span>
+              </div>
+              <span class="map-district-footer">San Juan de Lurigancho, Lima</span>
+            </div>
+            <div class="form-group mb-5">
+              <label for="new-report-address" class="form-label">Dirección exacta *</label>
+              <div class="input-icon-wrapper">
+                <span class="input-leading-icon">📍</span>
+                <input type="text" id="new-report-address" class="form-input with-leading-icon" placeholder="Ej: Jr. Las Flores 450, Zárate, SJL" oninput="handleAddressInput()">
+              </div>
+            </div>
+            <!-- resumen -->
+            <div class="summary-preview-panel mb-6">
+              <p class="summary-header-label">RESUMEN DEL REPORTE</p>
+              <div class="summary-content-body">
+                <div id="summary-cat-badge"></div>
+                <p id="summary-desc-preview" class="summary-desc-preview"></p>
+                <p id="summary-addr-preview" class="summary-addr-preview"></p>
+              </div>
+            </div>
+            <div class="dual-actions-row">
+              <button type="button" class="btn-step-back" onclick="goToWizardStep(2)">&larr; Atrás</button>
+              <button id="btn-step3-submit" type="button" class="btn-step-action btn-submit-ready" disabled onclick="submitNewReport()">
+                <span>✓ Enviar Reporte</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- detalles del reporte -->
+    <section id="screen-citizen-report-detail" class="screen main-content-wrapper hidden">
+      <div class="form-container">
+        <div class="report-header-badges mb-6">
+          <span id="detail-report-id" class="badge-code">SJL-2026-001</span>
+          <span id="detail-cat-badge"></span>
+          <span id="detail-status-badge"></span>
+        </div>
+        <div class="space-y-5">
+          <div class="card overflow-hidden">
+            <img src="archivo.jpeg" alt="Pocket Press en uso" class="media__img detail-img-banner" onerror="this.style.display='none'">
+          </div>
+          <div class="card p-6">
+            <h2 class="card-section-title">DETALLES DEL REPORTE</h2>
+            <p id="detail-description" class="detail-desc-text"></p>
+            <div class="detail-address-row">
+              <span class="detail-addr-icon">📍</span>
+              <span id="detail-address" class="detail-addr-text"></span>
+            </div>
+            <div class="detail-dates-grid">
+              <div>
+                <p class="meta-label">Reportado</p>
+                <p id="detail-date-created" class="meta-val"></p>
+              </div>
+              <div>
+                <p class="meta-label">Última actualización</p>
+                <p id="detail-date-updated" class="meta-val"></p>
+              </div>
+            </div>
+          </div>
+          <div class="card p-6">
+            <h2 class="card-section-title">ESTADO DE ATENCIÓN</h2>
+            <div id="detail-timeline-container" class="timeline-container"></div>
+          </div>
+          <div class="card p-6" id="detail-notes-card">
+            <h2 class="card-section-title">RESPUESTA MUNICIPAL</h2>
+            <div id="detail-notes-list" class="notes-stack"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- apartado de empleado -->
+    <section id="screen-employee-dashboard" class="screen main-content-wrapper hidden">
+      <div class="wide-content-container">
+        <div class="section-header-row mb-6">
+          <div>
+            <h1 class="page-title">Panel de gestión</h1>
+            <p class="page-subtitle">Incidencias del distrito &bull; San Juan de Lurigancho</p>
+          </div>
+          <div class="view-switcher">
+            <button id="btn-view-kanban" class="view-btn active" onclick="setEmployeeView('kanban')">Kanban</button>
+            <button id="btn-view-table" class="view-btn" onclick="setEmployeeView('table')">Tabla</button>
+          </div>
+        </div>
+        <div class="stats-grid-4 mb-6">
+          <div class="stat-card">
+            <div class="stat-icon-wrapper bg-blue-light">📊</div>
+            <div>
+              <div class="stat-card-value text-navy" id="emp-metric-total">0</div>
+              <div class="stat-card-label">Total reportes</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon-wrapper bg-warning-light">⏳</div>
+            <div>
+              <div class="stat-card-value text-warning" id="emp-metric-pending">0</div>
+              <div class="stat-card-label">Pendientes</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon-wrapper bg-blue-light">⚙️</div>
+            <div>
+              <div class="stat-card-value text-navy-light" id="emp-metric-progress">0</div>
+              <div class="stat-card-label">En proceso</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon-wrapper bg-green-light">✅</div>
+            <div>
+              <div class="stat-card-value text-success" id="emp-metric-resolved">0</div>
+              <div class="stat-card-label">Resueltos</div>
+            </div>
+          </div>
+        </div>
+        <!-- vista de kanban -->
+        <div id="employee-kanban-view" class="kanban-board">
+          <div class="kanban-column">
+            <div class="kanban-col-header">
+              <span class="status-indicator-dot dot-warning"></span>
+              <span class="kanban-col-title text-warning">PENDIENTE</span>
+              <span class="kanban-col-counter bg-warning-light text-warning" id="count-kanban-pending">0</span>
+            </div>
+            <div id="kanban-list-pending" class="kanban-cards-stack"></div>
+          </div>
+          <div class="kanban-column">
+            <div class="kanban-col-header">
+              <span class="status-indicator-dot dot-blue"></span>
+              <span class="kanban-col-title text-navy-light">EN PROCESO</span>
+              <span class="kanban-col-counter bg-blue-light text-navy-light" id="count-kanban-progress">0</span>
+            </div>
+            <div id="kanban-list-progress" class="kanban-cards-stack"></div>
+          </div>
+          <div class="kanban-column">
+            <div class="kanban-col-header">
+              <span class="status-indicator-dot dot-success"></span>
+              <span class="kanban-col-title text-success">RESUELTO</span>
+              <span class="kanban-col-counter bg-green-light text-success" id="count-kanban-resolved">0</span>
+            </div>
+            <div id="kanban-list-resolved" class="kanban-cards-stack"></div>
+          </div>
+        </div>
+        <!-- vista de tablas -->
+        <div id="employee-table-view" class="card overflow-hidden hidden">
+          <div class="table-filters-bar">
+            <button class="tab-filter-btn active" onclick="filterEmployeeTable('Todos', this)">
+              Todos <span class="tab-count" id="tab-count-todos">(0)</span>
+            </button>
+            <button class="tab-filter-btn" onclick="filterEmployeeTable('Pendiente', this)">
+              Pendiente <span class="tab-count" id="tab-count-pending">(0)</span>
+            </button>
+            <button class="tab-filter-btn" onclick="filterEmployeeTable('En Proceso', this)">
+              En Proceso <span class="tab-count" id="tab-count-progress">(0)</span>
+            </button>
+            <button class="tab-filter-btn" onclick="filterEmployeeTable('Resuelto', this)">
+              Resuelto <span class="tab-count" id="tab-count-resolved">(0)</span>
+            </button>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>CATEGORÍA</th>
+                  <th>DESCRIPCIÓN</th>
+                  <th>DIRECCIÓN</th>
+                  <th>VECINO</th>
+                  <th>ESTADO</th>
+                  <th>PRIORIDAD</th>
+                  <th>FECHA</th>
+                </tr>
+              </thead>
+              <tbody id="employee-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- gestion de incidencias -->
+    <section id="screen-employee-incident" class="screen main-content-wrapper hidden">
+      <div class="wide-content-container">
+        <div class="report-header-badges mb-6">
+          <span id="emp-inc-id" class="badge-code font-bold">SJL-2026-001</span>
+          <span id="emp-inc-cat-badge"></span>
+          <span id="emp-inc-status-badge"></span>
+          <span id="emp-inc-priority-badge" class="badge-pill"></span>
+        </div>
+        <div class="incident-management-layout">
+          <div class="inc-left-col space-y-4">
+            <div class="card overflow-hidden">
+              <img src="archivo.jpeg" alt="Pocket Press en uso" class="media__img incident-hero-img" onerror="this.style.display='none'">
+              <div class="img-caption-bar">Foto enviada por el vecino</div>
+            </div>
+            <div class="card p-5">
+              <h3 class="card-section-title">INFORMACIÓN DE LA INCIDENCIA</h3>
+              <div class="space-y-4">
+                <div>
+                  <p class="meta-label">Descripción</p>
+                  <p id="emp-inc-desc" class="detail-desc-text text-sm"></p>
+                </div>
+                <div class="detail-dates-grid pt-3 border-t">
+                  <div>
+                    <p class="meta-label">Vecino reportante</p>
+                    <p id="emp-inc-citizen" class="meta-val font-semibold"></p>
+                  </div>
+                  <div>
+                    <p class="meta-label">Fecha de reporte</p>
+                    <p id="emp-inc-date" class="meta-val font-semibold"></p>
+                  </div>
+                </div>
+                <div class="pt-3 border-t">
+                  <p class="meta-label">Ubicación exacta</p>
+                  <div class="flex items-start gap-1.5 mt-1">
+                    <span class="detail-addr-icon">📍</span>
+                    <p id="emp-inc-address" class="text-sm text-slate-700"></p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card p-5">
+              <h3 class="card-section-title" id="emp-inc-notes-count">HISTORIAL DE NOTAS (0)</h3>
+              <div id="emp-inc-notes-stack" class="notes-stack"></div>
+            </div>
+          </div>
+          <div class="inc-right-col">
+            <div class="card p-5 sticky-panel">
+              <h3 class="control-panel-heading">Control de estado</h3>
+              <div class="mb-5">
+                <p class="control-section-label">CAMBIAR ESTADO</p>
+                <div class="status-options-stack">
+                  <button type="button" class="status-option-btn" data-status="Pendiente" onclick="selectIncidentStatus('Pendiente')">
+                    <span class="status-circle dot-warning"></span>
+                    <span class="status-opt-text">Pendiente</span>
+                    <span class="check-mark hidden">✓</span>
+                  </button>
+                  <button type="button" class="status-option-btn" data-status="En Proceso" onclick="selectIncidentStatus('En Proceso')">
+                    <span class="status-circle dot-blue"></span>
+                    <span class="status-opt-text">En Proceso</span>
+                    <span class="check-mark hidden">✓</span>
+                  </button>
+                  <button type="button" class="status-option-btn" data-status="Resuelto" onclick="selectIncidentStatus('Resuelto')">
+                    <span class="status-circle dot-success"></span>
+                    <span class="status-opt-text">Resuelto</span>
+                    <span class="check-mark hidden">✓</span>
+                  </button>
+                </div>
+              </div>
+              <div class="mb-5">
+                <label for="emp-action-note" class="control-section-label">NOTA INTERNA / RESPUESTA AL VECINO</label>
+                <textarea id="emp-action-note" class="form-textarea" rows="4" placeholder="Describe las acciones tomadas o deja un mensaje oficial para el vecino..."></textarea>
+              </div>
+              <button id="btn-save-incident" type="button" class="btn btn-primary w-full py-3" onclick="saveIncidentChanges()">
+                <span>Guardar cambios</span>
+              </button>
+              <div class="current-status-footer">
+                Estado actual: <strong id="emp-current-status-label" class="text-navy">Pendiente</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Lógica Principal -->
+  <script src="app.js"></script>
+</body>
+</html>
