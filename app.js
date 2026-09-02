@@ -1,29 +1,10 @@
-let usersDatabase = [
+// --- base de datos temporal ---
+const DEFAULT_USERS = [
   { username: 'user', password: 'user123', name: 'Vecino', role: 'citizen', id: 'user' },
   { username: 'empleado', password: 'empleado123', name: 'Empleado Municipal', role: 'employee', id: 'emp' }
 ];
 
-const CATEGORY_CONFIG = {
-  'Luminarias': { icon: '💡', color: '#D97706', bg: '#FEF3C7', class: 'bg-cat-lum' },
-  'Basura acumulada': { icon: '🗑️', color: '#EA580C', bg: '#FFEDD5', class: 'bg-cat-basura' },
-  'Baches / Pistas rotas': { icon: '🚧', color: '#DC2626', bg: '#FEE2E2', class: 'bg-cat-baches' },
-  'Fugas de agua': { icon: '💧', color: '#2563EB', bg: '#DBEAFE', class: 'bg-cat-agua' },
-  'Otro': { icon: '➕', color: '#64748B', bg: '#F1F5F9', class: 'bg-cat-otro' }
-};
-
-const STATUS_CONFIG = {
-  'Pendiente': { class: 'status-pendiente', dotClass: 'dot-warning' },
-  'En Proceso': { class: 'status-proceso', dotClass: 'dot-blue' },
-  'Resuelto': { class: 'status-resuelto', dotClass: 'dot-success' }
-};
-
-const PRIORITY_CONFIG = {
-  'Alta': 'priority-alta',
-  'Media': 'priority-media',
-  'Baja': 'priority-baja'
-};
-
-let reportsData = [
+const DEFAULT_REPORTS = [
   {
     id: 'SJL-2026-001',
     category: 'Luminarias',
@@ -35,6 +16,7 @@ let reportsData = [
     citizenName: 'Vecino',
     citizenId: 'user',
     priority: 'Alta',
+    photoUrl: 'images/sjl.jpeg',
     notes: [
       { author: 'Téc. Ramírez', text: 'Se ha generado orden de trabajo OT-445. Cuadrilla asignada para revisión técnica.', date: '2026-08-11' }
     ]
@@ -50,6 +32,7 @@ let reportsData = [
     citizenName: 'Vecino',
     citizenId: 'user',
     priority: 'Media',
+    photoUrl: 'images/sjl.jpeg',
     notes: []
   },
   {
@@ -63,6 +46,7 @@ let reportsData = [
     citizenName: 'Vecino',
     citizenId: 'user',
     priority: 'Alta',
+    photoUrl: 'images/sjl.jpeg',
     notes: [
       { author: 'Ing. Torres', text: 'Bacheo temporal realizado. Se programará asfaltado definitivo en el siguiente plan de mantenimiento.', date: '2026-08-09' }
     ]
@@ -78,6 +62,7 @@ let reportsData = [
     citizenName: 'Carlos Mendoza',
     citizenId: 'other',
     priority: 'Alta',
+    photoUrl: 'images/sjl.jpeg',
     notes: [
       { author: 'Téc. Villanueva', text: 'Coordinando con cuadrilla de emergencia para intervención urgente.', date: '2026-08-12' }
     ]
@@ -93,6 +78,7 @@ let reportsData = [
     citizenName: 'Rosa Quispe',
     citizenId: 'other',
     priority: 'Alta',
+    photoUrl: 'images/sjl.jpeg',
     notes: []
   },
   {
@@ -106,12 +92,38 @@ let reportsData = [
     citizenName: 'Jorge Huamán',
     citizenId: 'other',
     priority: 'Baja',
+    photoUrl: 'images/sjl.jpeg',
     notes: [
       { author: 'Sup. Leiva', text: 'Limpieza y retiro de desmonte ejecutado con maquinaria pesada.', date: '2026-08-08' }
     ]
   }
 ];
 
+// Carga inicial desde LocalStorage o configuración por defecto
+let usersDatabase = JSON.parse(localStorage.getItem('app_users')) || DEFAULT_USERS;
+let reportsData = JSON.parse(localStorage.getItem('app_reports')) || DEFAULT_REPORTS;
+
+const CATEGORY_CONFIG = {
+  'Luminarias': { icon: '💡', color: '#D97706', bg: '#FEF3C7', class: 'bg-cat-lum' },
+  'Basura acumulada': { icon: '🗑️', color: '#EA580C', bg: '#FFEDD5', class: 'bg-cat-basura' },
+  'Baches / Pistas rotas': { icon: '🚧', color: '#DC2626', bg: '#FEE2E2', class: 'bg-cat-baches' },
+  'Fugas de agua': { icon: '🚰', color: '#2563EB', bg: '#DBEAFE', class: 'bg-cat-agua' },
+  'Otro': { icon: '📝', color: '#64748B', bg: '#F1F5F9', class: 'bg-cat-otro' }
+};
+
+const STATUS_CONFIG = {
+  'Pendiente': { class: 'status-pendiente', dotClass: 'dot-warning' },
+  'En Proceso': { class: 'status-proceso', dotClass: 'dot-blue' },
+  'Resuelto': { class: 'status-resuelto', dotClass: 'dot-success' }
+};
+
+const PRIORITY_CONFIG = {
+  'Alta': 'priority-alta',
+  'Media': 'priority-media',
+  'Baja': 'priority-baja'
+};
+
+// Variables de estado
 let currentRole = null;
 let currentUserId = null;
 let currentUserName = '';
@@ -120,7 +132,7 @@ let currentSelectedReportId = null;
 let currentEmployeeView = 'kanban';
 let currentEmployeeFilter = 'Todos';
 
-// Wizard state
+// Estado del Wizard
 let wizardState = {
   step: 1,
   category: null,
@@ -129,7 +141,8 @@ let wizardState = {
   address: '',
   lat: -11.9868,
   lng: -77.0035,
-  hasPhoto: false
+  hasPhoto: false,
+  photoData: null
 };
 
 // Leaflet mapa y marcador
@@ -137,23 +150,74 @@ let leafletMapInstance = null;
 let leafletMarkerInstance = null;
 let geocodeDebounceTimer = null;
 
-// editar estado de incidencia
+// Editar estado de incidencia
 let editIncidentState = {
   status: null,
   note: ''
 };
 
-// inicializacion y navegacion
+// Métodos de persistencia
+function persistData() {
+  localStorage.setItem('app_reports', JSON.stringify(reportsData));
+  localStorage.setItem('app_users', JSON.stringify(usersDatabase));
+}
+
+function persistSession() {
+  const session = {
+    currentRole,
+    currentUserId,
+    currentUserName,
+    currentScreen,
+    currentSelectedReportId,
+    currentEmployeeView,
+    currentEmployeeFilter
+  };
+  localStorage.setItem('app_session', JSON.stringify(session));
+}
+
+function persistWizardDraft() {
+  localStorage.setItem('app_wizard_draft', JSON.stringify(wizardState));
+}
+
+function clearWizardDraft() {
+  localStorage.removeItem('app_wizard_draft');
+}
+
+// Inicialización y restauración de estado
 document.addEventListener('DOMContentLoaded', () => {
-  renderScreen('screen-login');
+  const savedSession = JSON.parse(localStorage.getItem('app_session'));
+  const savedWizard = JSON.parse(localStorage.getItem('app_wizard_draft'));
+
+  if (savedWizard) {
+    wizardState = { ...wizardState, ...savedWizard };
+  }
+
+  if (savedSession && savedSession.currentRole) {
+    currentRole = savedSession.currentRole;
+    currentUserId = savedSession.currentUserId;
+    currentUserName = savedSession.currentUserName;
+    currentSelectedReportId = savedSession.currentSelectedReportId;
+    currentEmployeeView = savedSession.currentEmployeeView || 'kanban';
+    currentEmployeeFilter = savedSession.currentEmployeeFilter || 'Todos';
+
+    const avatar = currentUserName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'V';
+    const roleText = currentRole === 'employee' ? 'Panel Municipal' : 'Portal Ciudadano';
+    setupUserProfile(currentUserName, avatar, roleText);
+
+    const screenToLoad = savedSession.currentScreen || (currentRole === 'employee' ? 'employee-dashboard' : 'citizen-dashboard');
+    navigateTo(screenToLoad, false);
+  } else {
+    renderScreen('screen-login');
+  }
 });
 
-function navigateTo(screenName) {
+function navigateTo(screenName, isUserAction = true) {
   currentScreen = screenName;
+  persistSession();
+
   const header = document.getElementById('main-header');
   const btnBack = document.getElementById('btn-nav-back');
-  
-  // Ocultar todas las pantallas
+
   document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
 
   if (screenName === 'login') {
@@ -177,7 +241,11 @@ function navigateTo(screenName) {
     const sc = document.getElementById('screen-citizen-dashboard');
     if (sc) sc.classList.remove('hidden');
   } else if (screenName === 'citizen-new-report') {
-    resetWizard();
+    if (isUserAction && !localStorage.getItem('app_wizard_draft')) {
+      resetWizard();
+    } else {
+      restoreWizardUI();
+    }
     const sc = document.getElementById('screen-citizen-new-report');
     if (sc) sc.classList.remove('hidden');
   } else if (screenName === 'citizen-report-detail') {
@@ -188,6 +256,7 @@ function navigateTo(screenName) {
     renderEmployeeDashboard();
     const sc = document.getElementById('screen-employee-dashboard');
     if (sc) sc.classList.remove('hidden');
+    setEmployeeView(currentEmployeeView);
   } else if (screenName === 'employee-incident') {
     renderEmployeeIncident(currentSelectedReportId);
     const sc = document.getElementById('screen-employee-incident');
@@ -209,7 +278,7 @@ function renderScreen(screenId) {
   if (target) target.classList.remove('hidden');
 }
 
-// login y registro
+// Login y Registro
 function toggleAuthMode(mode) {
   const loginBox = document.getElementById('login-box');
   const registerBox = document.getElementById('register-box');
@@ -254,11 +323,10 @@ function handleLoginSubmit(event) {
       currentRole = userFound.role;
       currentUserId = userFound.id;
       currentUserName = userFound.name;
-
       const avatar = userFound.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'V';
       const roleText = userFound.role === 'employee' ? 'Panel Municipal' : 'Portal Ciudadano';
-
       setupUserProfile(userFound.name, avatar, roleText);
+      persistSession();
 
       if (userFound.role === 'employee') {
         navigateTo('employee-dashboard');
@@ -277,7 +345,6 @@ function handleRegisterSubmit(event) {
   const username = document.getElementById('reg-username').value.trim();
   const password = document.getElementById('reg-password').value;
   const confirmPassword = document.getElementById('reg-confirm-password').value;
-  
   const errorBox = document.getElementById('register-error');
   const errorText = document.getElementById('register-error-text');
   const submitBtn = document.getElementById('btn-register-submit');
@@ -324,13 +391,14 @@ function handleRegisterSubmit(event) {
     };
 
     usersDatabase.push(newUser);
+    persistData();
 
     currentRole = 'citizen';
     currentUserId = newUserId;
     currentUserName = name;
-
     const avatar = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'V';
     setupUserProfile(name, avatar, 'Portal Ciudadano');
+    persistSession();
 
     showToast(`¡Bienvenido/a, ${name}! Cuenta creada exitosamente.`);
     navigateTo('citizen-dashboard');
@@ -354,23 +422,23 @@ function handleLogout() {
   currentUserId = null;
   currentUserName = '';
   currentSelectedReportId = null;
+  localStorage.removeItem('app_session');
+  clearWizardDraft();
 
   const formLogin = document.getElementById('form-login');
   if (formLogin) formLogin.reset();
-
   const formRegister = document.getElementById('form-register');
   if (formRegister) formRegister.reset();
 
   const loginError = document.getElementById('login-error');
   if (loginError) loginError.classList.add('hidden');
-
   const registerError = document.getElementById('register-error');
   if (registerError) registerError.classList.add('hidden');
 
   navigateTo('login');
 }
 
-// notificaciones
+// Notificaciones
 let toastTimer = null;
 function showToast(message) {
   const toast = document.getElementById('toast');
@@ -386,10 +454,9 @@ function showToast(message) {
   }, 3500);
 }
 
-// portal ciudadano - dashboard
+// Portal Ciudadano - Dashboard
 function renderCitizenDashboard() {
   const citizenReports = reportsData.filter(r => r.citizenId === currentUserId || (!currentUserId && r.citizenId === 'user') || (currentUserId === 'user' && r.citizenId === 'user'));
-  
   const pending = citizenReports.filter(r => r.status === 'Pendiente').length;
   const inProgress = citizenReports.filter(r => r.status === 'En Proceso').length;
   const resolved = citizenReports.filter(r => r.status === 'Resuelto').length;
@@ -420,7 +487,7 @@ function renderCitizenDashboard() {
   }
 
   citizenReports.forEach(report => {
-    const catCfg = CATEGORY_CONFIG[report.category] || { icon: '📌', color: '#64748B', class: 'bg-cat-otro' };
+    const catCfg = CATEGORY_CONFIG[report.category] || { icon: '📝', color: '#64748B', class: 'bg-cat-otro' };
     const statusCfg = STATUS_CONFIG[report.status] || { class: 'status-pendiente' };
     
     const pct = report.status === 'Pendiente' ? 10 : report.status === 'En Proceso' ? 55 : 100;
@@ -433,9 +500,11 @@ function renderCitizenDashboard() {
       navigateTo('citizen-report-detail');
     };
 
+    const imgSrc = report.photoUrl || 'images/sjl.jpeg';
+
     card.innerHTML = `
       <div class="report-card-thumbnail">
-        <img src="archivo.jpeg" alt="Pocket Press en uso" class="media__img" onerror="this.style.display='none'">
+        <img src="${imgSrc}" alt="Reporte" class="media__img" onerror="this.src='images/sjl.jpeg'">
       </div>
       <div class="report-card-body">
         <div class="report-card-top">
@@ -468,8 +537,9 @@ function renderCitizenDashboard() {
   });
 }
 
-// pasos de nuevo reporte
+// Pasos de Nuevo Reporte
 function resetWizard() {
+  clearWizardDraft();
   wizardState = {
     step: 1,
     category: null,
@@ -478,7 +548,8 @@ function resetWizard() {
     address: '',
     lat: -11.9868,
     lng: -77.0035,
-    hasPhoto: false
+    hasPhoto: false,
+    photoData: null
   };
 
   const descEl = document.getElementById('new-report-desc');
@@ -495,7 +566,7 @@ function resetWizard() {
   if (otherFieldEl) otherFieldEl.classList.add('hidden');
   if (submitBtn) {
     submitBtn.disabled = true;
-    submitBtn.innerHTML = `<span>✓ Enviar Reporte</span>`;
+    submitBtn.innerHTML = `<span>📤 Enviar Reporte</span>`;
   }
 
   removeSelectedPhoto();
@@ -503,8 +574,60 @@ function resetWizard() {
   goToWizardStep(1);
 }
 
+function restoreWizardUI() {
+  const descEl = document.getElementById('new-report-desc');
+  const addrEl = document.getElementById('new-report-address');
+  const otherInputEl = document.getElementById('other-category-input');
+  const otherFieldEl = document.getElementById('other-category-field');
+
+  if (descEl) descEl.value = wizardState.description || '';
+  if (addrEl) addrEl.value = wizardState.address || '';
+  if (otherInputEl) otherInputEl.value = wizardState.customCategory || '';
+
+  if (wizardState.category === 'Otro' && otherFieldEl) {
+    otherFieldEl.classList.remove('hidden');
+  }
+
+  const btnStep1 = document.getElementById('btn-step1-next');
+  if (btnStep1) {
+    if (wizardState.category === 'Otro') {
+      btnStep1.disabled = wizardState.customCategory.trim().length === 0;
+    } else {
+      btnStep1.disabled = !wizardState.category;
+    }
+  }
+
+  const btnStep2 = document.getElementById('btn-step2-next');
+  if (btnStep2) {
+    btnStep2.disabled = wizardState.description.trim().length === 0;
+  }
+
+  const btnSubmit = document.getElementById('btn-step3-submit');
+  if (btnSubmit) {
+    btnSubmit.disabled = wizardState.address.trim().length === 0;
+  }
+
+  if (wizardState.hasPhoto && wizardState.photoData) {
+    const previewImg = document.getElementById('dropzone-preview-img');
+    const emptyZone = document.getElementById('dropzone-empty');
+    const previewZone = document.getElementById('dropzone-preview');
+    if (previewImg) {
+      previewImg.src = wizardState.photoData;
+      previewImg.style.display = 'block';
+    }
+    if (emptyZone) emptyZone.classList.add('hidden');
+    if (previewZone) previewZone.classList.remove('hidden');
+  } else {
+    removeSelectedPhoto();
+  }
+
+  updateCategorySelectionUI();
+  goToWizardStep(wizardState.step || 1);
+}
+
 function goToWizardStep(stepNumber) {
   wizardState.step = stepNumber;
+  persistWizardDraft();
 
   for (let s = 1; s <= 3; s++) {
     const stepView = document.getElementById(`wizard-step-${s}`);
@@ -552,6 +675,7 @@ function goToWizardStep(stepNumber) {
 
 function selectWizardCategory(category) {
   wizardState.category = category;
+  persistWizardDraft();
   updateCategorySelectionUI();
 
   const otherField = document.getElementById('other-category-field');
@@ -569,6 +693,8 @@ function selectWizardCategory(category) {
 function handleOtherCategoryInput() {
   const otherInput = document.getElementById('other-category-input');
   wizardState.customCategory = otherInput ? otherInput.value.trim() : '';
+  persistWizardDraft();
+
   const btnNext = document.getElementById('btn-step1-next');
   if (btnNext) btnNext.disabled = wizardState.customCategory.length === 0;
 }
@@ -586,6 +712,8 @@ function updateCategorySelectionUI() {
 function handleDescriptionInput() {
   const descEl = document.getElementById('new-report-desc');
   wizardState.description = descEl ? descEl.value.trim() : '';
+  persistWizardDraft();
+
   const btnNext = document.getElementById('btn-step2-next');
   if (btnNext) btnNext.disabled = wizardState.description.length === 0;
 }
@@ -595,15 +723,32 @@ function triggerFileInput() {
   if (fileInput) fileInput.click();
 }
 
-function handleFileSelected(event) {
-  const file = event.target.files[0];
-  if (file) {
+function processImageFile(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const dataUrl = e.target.result;
     wizardState.hasPhoto = true;
+    wizardState.photoData = dataUrl;
+    persistWizardDraft();
+
+    const previewImg = document.getElementById('dropzone-preview-img');
     const emptyZone = document.getElementById('dropzone-empty');
     const previewZone = document.getElementById('dropzone-preview');
+
+    if (previewImg) {
+      previewImg.src = dataUrl;
+      previewImg.style.display = 'block';
+    }
     if (emptyZone) emptyZone.classList.add('hidden');
     if (previewZone) previewZone.classList.remove('hidden');
-  }
+  };
+  reader.readAsDataURL(file);
+}
+
+function handleFileSelected(event) {
+  const file = event.target.files && event.target.files[0];
+  processImageFile(file);
 }
 
 function handleDragOver(e) {
@@ -622,20 +767,25 @@ function handleFileDrop(e) {
   e.preventDefault();
   const zone = document.getElementById('upload-zone');
   if (zone) zone.classList.remove('dragover');
-  if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-    wizardState.hasPhoto = true;
-    const emptyZone = document.getElementById('dropzone-empty');
-    const previewZone = document.getElementById('dropzone-preview');
-    if (emptyZone) emptyZone.classList.add('hidden');
-    if (previewZone) previewZone.classList.remove('hidden');
-  }
+
+  const file = e.dataTransfer.files && e.dataTransfer.files[0];
+  processImageFile(file);
 }
 
 function removeSelectedPhoto(event) {
   if (event) event.stopPropagation();
   wizardState.hasPhoto = false;
+  wizardState.photoData = null;
+  persistWizardDraft();
+
   const fileInput = document.getElementById('new-report-file');
   if (fileInput) fileInput.value = '';
+
+  const previewImg = document.getElementById('dropzone-preview-img');
+  if (previewImg) {
+    previewImg.src = '';
+  }
+
   const emptyZone = document.getElementById('dropzone-empty');
   const previewZone = document.getElementById('dropzone-preview');
   if (emptyZone) emptyZone.classList.remove('hidden');
@@ -645,6 +795,8 @@ function removeSelectedPhoto(event) {
 function handleAddressInput() {
   const addrEl = document.getElementById('new-report-address');
   wizardState.address = addrEl ? addrEl.value.trim() : '';
+  persistWizardDraft();
+
   const canSubmit = wizardState.address.length > 0;
   const submitBtn = document.getElementById('btn-step3-submit');
   if (submitBtn) submitBtn.disabled = !canSubmit;
@@ -657,8 +809,8 @@ function handleAddressInput() {
 
 function updateSummaryCard() {
   const finalCategory = wizardState.category === 'Otro' ? (wizardState.customCategory || 'Otro') : wizardState.category;
-  const catCfg = CATEGORY_CONFIG[wizardState.category] || { icon: '📌', color: '#64748B', class: 'bg-cat-otro' };
-  
+  const catCfg = CATEGORY_CONFIG[wizardState.category] || { icon: '📝', color: '#64748B', class: 'bg-cat-otro' };
+
   const catBadge = document.getElementById('summary-cat-badge');
   if (catBadge) {
     catBadge.innerHTML = `
@@ -680,7 +832,7 @@ function updateSummaryCard() {
   }
 }
 
-// motor de geocodificacion y mapa
+// Geocodificación y Mapa Leaflet
 const SJL_SECTORS = [
   {
     name: 'Zárate / Chacarilla de Otero',
@@ -817,7 +969,6 @@ function calculateLocalSJLAddress(lat, lng) {
 
   const latSpan = Math.abs(sector.maxLat - sector.minLat) || 0.01;
   const lngSpan = Math.abs(sector.maxLng - sector.minLng) || 0.01;
-
   const latProgress = Math.min(Math.max((lat - sector.minLat) / latSpan, 0), 1);
   const lngProgress = Math.min(Math.max((lng - sector.minLng) / lngSpan, 0), 1);
 
@@ -833,8 +984,7 @@ function calculateLocalSJLAddress(lat, lng) {
 }
 
 function initOrUpdateMap() {
-  const defaultCoords = [-11.9868, -77.0035]; // SJL Centro
-
+  const coords = [wizardState.lat || -11.9868, wizardState.lng || -77.0035];
   if (typeof L === 'undefined') return;
 
   try {
@@ -843,7 +993,7 @@ function initOrUpdateMap() {
 
     if (!leafletMapInstance) {
       leafletMapInstance = L.map('leaflet-map', {
-        center: defaultCoords,
+        center: coords,
         zoom: 15,
         zoomControl: true
       });
@@ -853,11 +1003,13 @@ function initOrUpdateMap() {
         attribution: '© OpenStreetMap'
       }).addTo(leafletMapInstance);
 
-      leafletMarkerInstance = L.marker(defaultCoords, {
+      leafletMarkerInstance = L.marker(coords, {
         draggable: true
       }).addTo(leafletMapInstance);
 
-      updateExactAddress(defaultCoords[0], defaultCoords[1]);
+      if (!wizardState.address) {
+        updateExactAddress(coords[0], coords[1]);
+      }
 
       leafletMapInstance.on('click', (e) => {
         const { lat, lng } = e.latlng;
@@ -870,8 +1022,8 @@ function initOrUpdateMap() {
       });
     } else {
       leafletMapInstance.invalidateSize();
-      leafletMapInstance.setView([wizardState.lat, wizardState.lng], 15);
-      leafletMarkerInstance.setLatLng([wizardState.lat, wizardState.lng]);
+      leafletMapInstance.setView(coords, 15);
+      leafletMarkerInstance.setLatLng(coords);
     }
   } catch (err) {
     console.error('Error mapa:', err);
@@ -881,6 +1033,8 @@ function initOrUpdateMap() {
 function setMapPinLocation(lat, lng) {
   wizardState.lat = lat;
   wizardState.lng = lng;
+  persistWizardDraft();
+
   if (leafletMarkerInstance) {
     leafletMarkerInstance.setLatLng([lat, lng]);
   }
@@ -899,11 +1053,9 @@ function updateExactAddress(lat, lng) {
   geocodeDebounceTimer = setTimeout(async () => {
     let resolvedAddress = null;
 
-    // 1. Nominatim OpenStreetMap (Zoom 18 para calle/pasaje exacto)
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 1600);
-
       const osmRes = await fetch(
         `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=es`,
         { signal: controller.signal }
@@ -917,7 +1069,6 @@ function updateExactAddress(lat, lng) {
           const via = a.road || a.pedestrian || a.footway || a.path || a.residential || a.street || a.cycleway || a.service || a.track || a.alley;
           const num = a.house_number ? ` ${a.house_number}` : '';
           const barrio = a.neighbourhood || a.suburb || a.quarter || a.village || '';
-
           if (via) {
             resolvedAddress = buildFullAddress(`${via}${num}`, barrio);
           }
@@ -925,12 +1076,10 @@ function updateExactAddress(lat, lng) {
       }
     } catch (e) {}
 
-    // 2. Photon Komoot OSM API (Alta velocidad)
     if (!resolvedAddress) {
       try {
         const controller2 = new AbortController();
         const timeoutId2 = setTimeout(() => controller2.abort(), 1200);
-
         const photonRes = await fetch(
           `https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}&lang=es`,
           { signal: controller2.signal }
@@ -952,7 +1101,6 @@ function updateExactAddress(lat, lng) {
       } catch (e) {}
     }
 
-    // 3. Motor Catastral Local de SJL (Garantiza siempre vía, número y urbanización real)
     if (!resolvedAddress) {
       resolvedAddress = calculateLocalSJLAddress(lat, lng);
     }
@@ -991,33 +1139,35 @@ function submitNewReport() {
       citizenName: currentUserName || 'Vecino',
       citizenId: currentUserId || 'user',
       priority: 'Media',
+      photoUrl: wizardState.photoData || 'images/sjl.jpeg',
       notes: []
     };
 
     reportsData.unshift(newReport);
+    persistData();
+    clearWizardDraft();
     showToast(`Reporte enviado exitosamente • ID: ${newId}`);
     
-    // Restaurar estado del botón antes de navegar
     if (submitBtn) {
       submitBtn.disabled = false;
-      submitBtn.innerHTML = `<span>✓ Enviar Reporte</span>`;
+      submitBtn.innerHTML = `<span>📤 Enviar Reporte</span>`;
     }
 
     navigateTo('citizen-dashboard');
   }, 700);
 }
 
-// detalle de reporte ciudadano
+// Detalle de Reporte Ciudadano
 function renderCitizenReportDetail(reportId) {
   const report = reportsData.find(r => r.id === reportId);
   if (!report) return;
 
-  const catCfg = CATEGORY_CONFIG[report.category] || { icon: '📌', class: 'bg-cat-otro' };
+  const catCfg = CATEGORY_CONFIG[report.category] || { icon: '📝', class: 'bg-cat-otro' };
   const statusCfg = STATUS_CONFIG[report.status] || { class: 'status-pendiente' };
 
   const idEl = document.getElementById('detail-report-id');
   if (idEl) idEl.textContent = report.id;
-  
+
   const catEl = document.getElementById('detail-cat-badge');
   if (catEl) {
     catEl.innerHTML = `
@@ -1036,6 +1186,12 @@ function renderCitizenReportDetail(reportId) {
         <span>${report.status}</span>
       </span>
     `;
+  }
+
+  const imgEl = document.getElementById('detail-report-img');
+  if (imgEl) {
+    imgEl.src = report.photoUrl || 'images/sjl.jpeg';
+    imgEl.style.display = 'block';
   }
 
   const descEl = document.getElementById('detail-description');
@@ -1084,7 +1240,7 @@ function renderCitizenReportDetail(reportId) {
   const notesList = document.getElementById('detail-notes-list');
   if (notesList && notesCard) {
     notesList.innerHTML = '';
-    if (report.notes.length === 0) {
+    if (!report.notes || report.notes.length === 0) {
       notesCard.classList.add('hidden');
     } else {
       notesCard.classList.remove('hidden');
@@ -1107,7 +1263,7 @@ function renderCitizenReportDetail(reportId) {
   }
 }
 
-// panel de empleado
+// Panel de Empleado
 function renderEmployeeDashboard() {
   const total = reportsData.length;
   const pending = reportsData.filter(r => r.status === 'Pendiente').length;
@@ -1140,6 +1296,8 @@ function renderEmployeeDashboard() {
 
 function setEmployeeView(viewMode) {
   currentEmployeeView = viewMode;
+  persistSession();
+
   const btnKanban = document.getElementById('btn-view-kanban');
   const btnTable = document.getElementById('btn-view-table');
   const kanbanContainer = document.getElementById('employee-kanban-view');
@@ -1182,7 +1340,7 @@ function renderKanbanCards(containerId, list) {
   container.innerHTML = '';
 
   list.forEach(report => {
-    const catCfg = CATEGORY_CONFIG[report.category] || { icon: '📌', class: 'bg-cat-otro' };
+    const catCfg = CATEGORY_CONFIG[report.category] || { icon: '📝', class: 'bg-cat-otro' };
     const priorityClass = PRIORITY_CONFIG[report.priority] || 'priority-media';
 
     const card = document.createElement('div');
@@ -1213,6 +1371,7 @@ function renderKanbanCards(containerId, list) {
 
 function filterEmployeeTable(filterStatus, btn) {
   currentEmployeeFilter = filterStatus;
+  persistSession();
   document.querySelectorAll('.tab-filter-btn').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
   renderEmployeeTable();
@@ -1228,7 +1387,7 @@ function renderEmployeeTable() {
   tbody.innerHTML = '';
 
   filtered.forEach(report => {
-    const catCfg = CATEGORY_CONFIG[report.category] || { icon: '📌', class: 'bg-cat-otro' };
+    const catCfg = CATEGORY_CONFIG[report.category] || { icon: '📝', class: 'bg-cat-otro' };
     const statusCfg = STATUS_CONFIG[report.status] || { class: 'status-pendiente' };
     const priorityClass = PRIORITY_CONFIG[report.priority] || 'priority-media';
 
@@ -1262,7 +1421,7 @@ function renderEmployeeTable() {
   });
 }
 
-// gestion de incidencias empleado
+// Gestión de Incidencias Empleado
 function renderEmployeeIncident(reportId) {
   const report = reportsData.find(r => r.id === reportId);
   if (!report) return;
@@ -1270,13 +1429,13 @@ function renderEmployeeIncident(reportId) {
   editIncidentState.status = report.status;
   editIncidentState.note = '';
 
-  const catCfg = CATEGORY_CONFIG[report.category] || { icon: '📌', class: 'bg-cat-otro' };
+  const catCfg = CATEGORY_CONFIG[report.category] || { icon: '📝', class: 'bg-cat-otro' };
   const statusCfg = STATUS_CONFIG[report.status] || { class: 'status-pendiente' };
   const priorityClass = PRIORITY_CONFIG[report.priority] || 'priority-media';
 
   const idEl = document.getElementById('emp-inc-id');
   if (idEl) idEl.textContent = report.id;
-  
+
   const catEl = document.getElementById('emp-inc-cat-badge');
   if (catEl) {
     catEl.innerHTML = `
@@ -1301,6 +1460,12 @@ function renderEmployeeIncident(reportId) {
   if (priorityEl) {
     priorityEl.className = `badge-pill ${priorityClass}`;
     priorityEl.textContent = `Prioridad ${report.priority}`;
+  }
+
+  const imgEl = document.getElementById('emp-inc-img');
+  if (imgEl) {
+    imgEl.src = report.photoUrl || 'images/sjl.jpeg';
+    imgEl.style.display = 'block';
   }
 
   const descEl = document.getElementById('emp-inc-desc');
@@ -1394,6 +1559,8 @@ function saveIncidentChanges() {
       });
     }
 
+    persistData();
+
     if (btnSave) {
       btnSave.disabled = false;
       btnSave.innerHTML = `<span>✓ Guardado exitosamente</span>`;
@@ -1408,7 +1575,7 @@ function saveIncidentChanges() {
   }, 600);
 }
 
-// utilidades fecha y textos
+// Utilidades de fecha y formato
 function formatDate(dateStr) {
   if (!dateStr) return '';
   const parts = dateStr.split('-');
